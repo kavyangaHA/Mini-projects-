@@ -5,13 +5,13 @@ def check_password(password):
     score = 0
 
     if len(password)>=8:
-        sccore+=1
+        score+=1
 
     if any(c.isupper() for c in password):
         score+=1
 
     if any(c.islower() for c in password):
-        acore +=1
+        score +=1
 
     if any(c.isdigit() for c in password):
         score +=1
@@ -22,7 +22,7 @@ def check_password(password):
 
 
 def feedback(score):
-    if score ==0 or score ===1:
+    if score ==0 or score ==1:
         return "💀 seriously?"
     elif score ==2:
         return "😬 Meh… hackers are laughing."
@@ -34,10 +34,15 @@ def feedback(score):
         return "🔥 Hacker-proof (almost)!"
 
 while True:
-    password = input("Enter password: ")
-    score = check_password(password)
-    print(feedback(score))
+    password = input("Enter your password: ").strip()
 
-    if score >=4:
-        print("Congratulation!,you did it 😎")
-        break
+    if any(c.isspace() for c in password):
+        print("❌ Password should not contain spaces!")
+    else:
+        score = check_password(password)
+        print(f"Score: {score}/5")
+        print("→", feedback(score))
+
+        if score >=4:
+            print("Congratulation!,you did it 😎")
+            break
