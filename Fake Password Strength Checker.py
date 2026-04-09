@@ -21,7 +21,6 @@ def check_password(password):
     return score
 
 
-
 def feedback(score):
     if score ==0 or score ===1:
         return "💀 seriously?"
@@ -34,3 +33,11 @@ def feedback(score):
     else:
         return "🔥 Hacker-proof (almost)!"
 
+while True:
+    password = input("Enter password: ")
+    score = check_password(password)
+    print(feedback(score))
+
+    if score >=4:
+        print("Congratulation!,you did it 😎")
+        break
