@@ -19,3 +19,18 @@ def check_password(password):
     if any(c in string.punctuation for c in password):
         score +=1
     return score
+
+
+
+def feedback(score):
+    if score ==0 or score ===1:
+        return "💀 seriously?"
+    elif score ==2:
+        return "😬 Meh… hackers are laughing."
+    elif score ==3:
+        return "🙂 Not bad… but still risky."
+    elif score==4:
+        return "😎 Strong password!"
+    else:
+        return "🔥 Hacker-proof (almost)!"
+
