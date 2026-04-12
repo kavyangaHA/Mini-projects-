@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bubble Wrap Popper</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0f0f1e;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: system-ui, sans-serif;
+    padding: 24px;
+  }
+  .hud {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 580px;
+    margin-bottom: 16px;
+  }
+  .stat { font-size: 14px; color: #8888aa; }
+  .stat span { color: #c8caff; font-weight: 600; }
+  .reset-btn {
+    font-size: 13px;
+    padding: 6px 16px;
+    border-radius: 99px;
+    background: transparent;
+    border: 1px solid #44446a;
+    color: #8888aa;
+    cursor: pointer;
+    transition: background .15s, color .15s;
+  }
+  .reset-btn:hover { background: #2a2a4a; color: #c8caff; }
+
+  .grid {
+    display: grid;
+    gap: 6px;
+    justify-content: center;
+  }
+
+  .bubble {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    cursor: pointer;
+    position: relative;
+    background: none;
+    border: none;
+    padding: 0;
+  }
+  .bubble:active { transform: scale(0.93); }
+
+  .inner {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 1.5px solid rgba(140,180,255,0.4);
+    position: relative;
+    transition: transform .12s, opacity .12s;
+    overflow: hidden;
+  }
+  .shine {
+    position: absolute;
+    top: 16%;
+    left: 20%;
+    width: 32%;
+    height: 20%;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.68);
+    pointer-events: none;
+  }
+  .shine2 {
+    position: absolute;
+    bottom: 18%;
+    right: 18%;
+    width: 16%;
+    height: 10%;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.28);
+    pointer-events: none;
+  }
+
+  /* popping animation */
+  .bubble.popping .inner {
+    animation: pop .2s ease-out forwards;
+  }
+  @keyframes pop {
+    0%   { transform: scale(1);    opacity: 1; }
+    40%  { transform: scale(1.5);  opacity: .6; }
+    100% { transform: scale(0);    opacity: 0; }
+  }
+
+  /* ripple ring */
+  .ring {
+    position: absolute;
+    inset: -8px;
+    border-radius: 50%;
+    border: 2px solid rgba(180,210,255,0.55);
+    opacity: 0;
+    pointer-events: none;
+  }
+  .bubble.popping .ring {
+    animation: ring .3s ease-out forwards;
+  }
+  @keyframes ring {
+    0%   { transform: scale(0.7); opacity: .9; }
+    100% { transform: scale(1.7); opacity: 0; }
+  }
+
+  .bubble.popped { pointer-events: none; }
+  .bubble.popped .inner { opacity: 0; transform: scale(0); }
+
+  /* all-done banner */
+  .all-done {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    margin-top: 28px;
+    text-align: center;
+    animation: fadeIn .5s ease;
+  }
+  .all-done.show { display: flex; }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+  .all-done h2 { font-size: 24px; font-weight: 600; color: #c8caff; }
+  .all-done p  { font-size: 14px; color: #8888aa; }
+</style>
+</head>
+<body>
+
+<div class="hud">
+  <div class="stat">popped <span id="cnt">0</span> / <span id="tot">0</span></div>
+  <div class="stat" id="pct">0%</div>
+  <button class="reset-btn" onclick="init()">new sheet</button>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<div class="all-done" id="done">
+  <h2>🎉 all popped!</h2>
+  <p>perfectly satisfying. want another sheet?</p>
+  <button class="reset-btn" style="margin-top:4px;font-size:14px;padding:8px 22px" onclick="init()">
+    pop another sheet
+  </button>
+</div>
+
+<script>
+const COLS = 12, ROWS = 9;
+let popped = 0, total = 0;
+let audioCtx = null;
+
+function getAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  return audioCtx;
+}
+
+function playPop(i) {
+  try {
+    const ctx = getAudio();
+    const duration = 0.09;
+    const buf = ctx.createBuffer(1, ctx.sampleRate * duration, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let j = 0; j < data.length; j++) {
+      const t = j / ctx.sampleRate;
+      data[j] = (Math.random() * 2 - 1) * Math.exp(-t * 75) * 0.8;
+    }
+    const src    = ctx.createBufferSource();
+    src.buffer   = buf;
+    const filter = ctx.createBiquadFilter();
+    filter.type  = 'bandpass';
+    filter.frequency.value = 500 + i * 15 + Math.random() * 220;
+    filter.Q.value = 0.75;
+    const gain = ctx.createGain();
+    gain.gain.value = 0.38 + Math.random() * 0.22;
+    src.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    src.start();
+  } catch(e) {}
+}
+
+function updateHud() {
+  document.getElementById('cnt').textContent = popped;
+  document.getElementById('tot').textContent = total;
+  const pct = total ? Math.round(popped / total * 100) : 0;
+  document.getElementById('pct').textContent = pct + '%';
+  if (popped === total && total > 0) {
+    setTimeout(() => document.getElementById('done').classList.add('show'), 350);
+  }
+}
+
+function popBubble(btn, idx) {
+  if (btn.classList.contains('popped') || btn.classList.contains('popping')) return;
+  btn.classList.add('popping');
+  playPop(idx);
+  popped++;
+  updateHud();
+  setTimeout(() => {
+    btn.classList.remove('popping');
+    btn.classList.add('popped');
+  }, 300);
+}
+
+function init() {
+  popped = 0;
+  total  = COLS * ROWS;
+  document.getElementById('done').classList.remove('show');
+
+  const grid = document.getElementById('grid');
+  grid.style.gridTemplateColumns = `repeat(${COLS}, 46px)`;
+  grid.innerHTML = '';
+
+  for (let i = 0; i < total; i++) {
+    const btn = document.createElement('button');
+    btn.className = 'bubble';
+    btn.setAttribute('aria-label', 'bubble ' + (i + 1));
+
+    const hue = 200 + (i % 9) * 9;
+    const sat = 75 + (i % 3) * 6;
+
+    btn.innerHTML = `
+      <div class="inner" style="
+        background: radial-gradient(circle at 35% 30%,
+          rgba(255,255,255,0.75) 0%,
+          hsla(${hue},${sat}%,78%,0.50) 25%,
+          hsla(${hue},${sat}%,58%,0.30) 58%,
+          hsla(${hue},${sat - 10}%,40%,0.18) 100%);
+        border-color: hsla(${hue},70%,75%,0.42);">
+        <div class="shine"></div>
+        <div class="shine2"></div>
+      </div>
+      <div class="ring" style="border-color:hsla(${hue},80%,78%,0.6)"></div>
+    `;
+
+    btn.addEventListener('click', () => popBubble(btn, i));
+    grid.appendChild(btn);
+  }
+
+  updateHud();
+}
+
+init();
+</script>
+</body>
+</html>
